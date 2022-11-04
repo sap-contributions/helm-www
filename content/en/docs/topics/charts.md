@@ -71,7 +71,9 @@ dependencies: # A list of the chart requirements (optional)
     tags: # (optional)
       - Tags can be used to group charts for enabling/disabling together
     import-values: # (optional)
-      - ImportValues holds the mapping of source values to parent key to be imported. Each item can be a string or pair of child/parent sublist items.
+      - ImportValues holds the mapping of child values to parent key to be imported. Each item can be a string or pair of child/parent sublist items.
+    export-values: # (optional)
+      - ExportValues holds the mapping of parent values to child key to be exported. Each item can be a string or pair of child/parent sublist items.
     alias: (optional) Alias to be used for the chart. Useful when you have to add the same chart multiple times
 maintainers: # (optional)
   - name: The maintainers name (required for each maintainer)
@@ -528,6 +530,71 @@ myimports:
 
 The parent's final values now contains the `myint` and `mybool` fields imported
 from subchart1.
+
+#### Exporting Values via dependencies
+
+In some cases it is desirable to propagate parent values to one or more child
+charts to prevent duplication of shared configuration.
+
+> Notice: `export-values` is only available in Helm 3.11 and above. If you are
+planning to use it, don't forget to [set the minimum Helm version]({{< ref
+"minimum_helm_version.md" >}}) to 3.11 or higher.
+
+The keys containing the values to be exported can be specified in the parent
+chart's `dependencies` in the field `export-values` using a YAML list. Each
+item in the list needs to specify the source key of the values to be exported
+(`parent`) and the destination path in the child chart's values (`child`).
+
+The `export-values` in the example below instructs Helm to take any values found
+at `parent:` path and copy them to the childs's values at the path specified in
+`child:`
+
+```yaml
+# parent's Chart.yaml file
+
+dependencies:
+  - name: subchart1
+    repository: http://localhost:10191
+    version: 0.1.0
+    ...
+    export-values:
+      - child: default.data
+        parent: myexports
+```
+
+In the above example, values found at `myexports` in the parent chart's values
+will be exported to the `default.data` key in the subchart1's values as
+detailed below:
+
+```yaml
+# parent's values.yaml file
+
+myexports:
+  myint: 0
+  mybool: false
+```
+
+```yaml
+# subchart1's values.yaml file
+
+default:
+  data:
+    myint: 999
+    mybool: true
+    mystring: "helm rocks!"
+```
+
+The child chart's resulting values would be:
+
+```yaml
+# childs's final values
+
+default:
+  data:
+    myint: 0
+    mybool: false
+    mystring: "helm rocks!"
+```
 
 ### Managing Dependencies manually via the `charts/` directory
 
